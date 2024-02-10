@@ -56,12 +56,21 @@ async function drawLineChart() {
 
     //freezing temperature box
     const freezingTemperaturePlacement = yScale(32);
-    const freezingTemperatures = bounds.append("rect")
+    /*const freezingTemperatures = bounds.append("rect")
         .attr("x", 0)
         .attr("width", dimensions.boundedWidth)
         .attr("y", freezingTemperaturePlacement)
         .attr("height", dimensions.boundedHeight - freezingTemperaturePlacement)
-        .attr("fill", "#e0f3f3");
+        .attr("fill", "#e0f3f3"); */
+    const freezingTemperatureLine = bounds.append("line")
+        .attr("x1", 0)
+        .attr("x2", dimensions.boundedWidth)
+        .attr("y1", freezingTemperaturePlacement)
+        .attr("y2", freezingTemperaturePlacement)
+        .attr("stroke", "#000000")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "10,20")
+        .attr("opacity", 0.5);
 
     // Set the gradient
     svg.append("linearGradient")
