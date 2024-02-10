@@ -3,17 +3,17 @@ import * as d3 from "d3";
 async function drawLineChart() {
     const dataset = await d3.json("./data/my_weather_data.json");
     console.log(dataset[0]);
-    const yAccessor = d => d["temperatureMax"];
-    const parseDate = d3.timeParse("%Y-%m-%d");
-    const xAccessor = d => parseDate(d["date"]);
 
+    //set accessors
+    const parseDate = d3.timeParse("%Y-%m-%d");
     const accessors = {
-        max: d => d["temperatureMax"],
-        min: d => d["temperatureMin"],
-        mean: d => (d["temperatureMax"] + d["temperatureMin"]) / 2
+        yMax: d => d["temperatureMax"],
+        yMin: d => d["temperatureMin"],
+        yMean: d => (d["temperatureMax"] + d["temperatureMin"]) / 2,
+        x: d => parseDate(d["date"]),
     };
     
-
+    //set dimensions
     let dimensions = {
         width: window.innerWidth * 0.9,
         height: 400,
@@ -31,11 +31,11 @@ async function drawLineChart() {
         - dimensions.margin.top
         - dimensions.margin.bottom; 
 
+    //create wrapper and bounds
     const wrapper = d3.select("#wrapper")
     const svg = wrapper.append("svg")
         .attr("width", dimensions.width)
         .attr("height", dimensions.height);
-
     const bounds = svg.append("g")
         .style("transform", `translate(${
             dimensions.margin.left
@@ -43,10 +43,18 @@ async function drawLineChart() {
             dimensions.margin.top
         }px)`);
 
-        // set scales
+    // set scales
+    const yMaxExtent = d3.extent(dataset, accessors['yMax'])
+    const yMinExtent = d3.extent(dataset, accessors['yMin']);
     const yScale = d3.scaleLinear()
-        .domain(d3.extent(dataset, yAccessor))
+        .domain(d3.extent([...yMaxExtent, ...yMinExtent]))
         .range([dimensions.boundedHeight, 0]);
+    const xScale = d3.scaleTime()
+        .domain(d3.extent(dataset, accessors['x']))
+        .range([0, dimensions.boundedWidth]);  
+    console.log(d3.extent(dataset, accessors['yMax']))
+
+    //freezing temperature box
     const freezingTemperaturePlacement = yScale(32);
     const freezingTemperatures = bounds.append("rect")
         .attr("x", 0)
@@ -54,7 +62,6 @@ async function drawLineChart() {
         .attr("y", freezingTemperaturePlacement)
         .attr("height", dimensions.boundedHeight - freezingTemperaturePlacement)
         .attr("fill", "#e0f3f3");
-
 
     // Set the gradient
     svg.append("linearGradient")
@@ -71,29 +78,36 @@ async function drawLineChart() {
         ])
         .enter().append("stop")
         .attr("offset", function(d) { return d.offset; })
-        .attr("stop-color", function(d) { return d.color; });
-        
-    const xScale = d3.scaleTime()
-        .domain(d3.extent(dataset, xAccessor))
-        .range([0, dimensions.boundedWidth]);    
-    const lineGenerator = d3.line()
-        .x(d => xScale(xAccessor(d)))
-        .y(d => yScale(yAccessor(d)));
+        .attr("stop-color", function(d) { return d.color; }); 
 
-    const line = bounds.append("path")
+    // Draw
+    const lineGenerator = d3.line()
+        .x(d => xScale(accessors['x'](d)))
+    const maxLine = bounds.append("path")
         .datum(dataset) // Bind the dataset to the path
-        .attr("d", lineGenerator)
+        .attr("d", lineGenerator.y(d => yScale(accessors['yMax'](d))))
         .attr("fill", "none")
-        .attr("stroke-width", 2)
+        .attr("stroke-width", 1)
+        .attr("class", "line")
+        .attr("stroke", "url(#line-gradient)")
+    const minLine = bounds.append("path")
+        .datum(dataset) // Bind the dataset to the path
+        .attr("d", lineGenerator.y(d => yScale(accessors['yMin'](d))))
+        .attr("fill", "none")
+        .attr("stroke-width", 1)
         .attr("class", "line")
         .attr("stroke", "url(#line-gradient)")
 
-   
+    const areaGenerator = d3.area()
+        .x(d => xScale(accessors['x'](d)))
+        .y0(d => yScale(accessors['yMin'](d)))
+        .y1(d => yScale(accessors['yMax'](d)))  
+    const area = bounds.append("path")
+        .datum(dataset)
+        .attr("d", areaGenerator)
+        .attr("fill", "url(#line-gradient)")
+        .attr("opacity", 0.1)
 
-
-
-
-    
     const yAxisGenerator = d3.axisLeft()        
         .scale(yScale);
     const yAxis = bounds.append("g")    
